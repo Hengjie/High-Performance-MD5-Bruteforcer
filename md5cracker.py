@@ -9,7 +9,7 @@ Hengjie (C) 2012. All rights reserved.
 
 """
 
-import md5
+import hashlib
 import sys
 from pprint import pprint as pp
 from multiprocessing import Process, Queue, Event, Manager
@@ -50,8 +50,7 @@ class MD5Cracker(Process):
             self.internal_count = 0
 
         # check MD5 hash
-        m = md5.new(password)
-        if (m.hexdigest() == hash):
+        if (hashlib.md5(password).hexdigest() == hash):
             print "match: {}".format(password)
             self.global_namespace.finished = True
             sys.exit()

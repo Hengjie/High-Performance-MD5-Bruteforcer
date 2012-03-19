@@ -16,6 +16,7 @@ from multiprocessing import Process, Queue, Event, Manager
 from Queue import Empty
 import atexit
 import time
+import random
 
 # Hash to bruteforce
 hash = "8b1a9953c4611296a827abf8c47804d7"
@@ -34,7 +35,21 @@ class MD5Cracker(Process):
         self.queue = queue
         super(MD5Cracker, self).__init__()
 
+        self.internal_count = 0
+        self.internal_mod = random.randint(500, 1000)
+
     def checkPassword(self, password):
+        '''Check to see if password matches hash'''
+
+        # count
+        self.internal_count += 1
+
+        # Batch update of global_namespace to prevent locking
+        if self.internal_count % self.internal_mod == 0:
+            self.global_namespace.count += self.internal_count
+            self.internal_count = 0
+
+        # check MD5 hash
         m = md5.new(password)
         if (m.hexdigest() == hash):
             print "match: {}".format(password)
@@ -101,6 +116,7 @@ workers = []
 work_queue = Manager().Queue()
 global_namespace = Manager().Namespace()
 global_namespace.finished = False
+global_namespace.count = 0
 
 # Set up Processes
 number_of_processes = 16
@@ -112,6 +128,7 @@ for i in range(number_of_processes):
 print "Target Hash: {}".format(hash)
 
 maxChars = 13
+while_count = 1
 for baseWidth in range(1, maxChars + 1):
 
     while global_namespace.finished is False:
@@ -122,6 +139,14 @@ for baseWidth in range(1, maxChars + 1):
             work_queue.put({'width': baseWidth, 'position': 0, 'baseString': ""})
             break
         else:
+
+            if while_count % 10 == 0:
+                global_namespace.count = 0
+                while_count = 1
+            else:
+                print "{:,d} passwords/sec".format(global_namespace.count/while_count)
+                while_count += 1
+
             print "Queue Size: {}".format(work_queue.qsize())
             time.sleep(1)
             continue
